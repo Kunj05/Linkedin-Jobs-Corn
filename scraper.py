@@ -40,13 +40,17 @@ TIMESTAMP_FILE = 'last_reset.json'
 
 # Load job data
 def load_job_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r') as f:
+    docs_dir = 'docs'
+    file_path = os.path.join(docs_dir, 'job_listings.json')
+    
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
             try:
                 return json.load(f)
             except json.JSONDecodeError:
                 print('[ERROR] Invalid JSON, resetting')
-    return {"jobs": [], "links": []}
+    return {"jobs": [], "links": []}  # Return an empty array if the file does not exist or is invalid
+
 
 # Load last reset timestamp
 def load_last_reset():
@@ -57,13 +61,19 @@ def load_last_reset():
 
 # Save job data
 def save_job_data(data):
-    docs_dir = 'docs'  # Ensure the 'docs' directory is specified
-    if not os.path.exists(docs_dir):
-        os.makedirs(docs_dir)  # Create docs folder if it doesn't exist
+    docs_dir = 'docs'
+    file_path = os.path.join(docs_dir, 'job_listings.json')
 
-    with open(os.path.join(docs_dir, 'job_listings.json'), 'w') as f:
-        json.dump(data, f, indent=2)
+    # Load the existing data
+    existing_data = load_job_data()
 
+    # Append new jobs
+    existing_data["jobs"].extend(data["jobs"])
+    existing_data["links"].extend(data["links"])
+
+    # Save the updated data back to the file
+    with open(file_path, 'w') as f:
+        json.dump(existing_data, f, indent=2)
 
 # Save reset timestamp
 def save_last_reset(timestamp):
@@ -76,19 +86,24 @@ def save_last_reset(timestamp):
 
 # Event handlers
 def on_data(data: EventData):
+    # Load the existing job data
     job_data = load_job_data()
+
+    # Create a new job entry
     job_entry = {
         "title": data.title,
         "company": data.company,
         "link": data.link,
         "time": data.date_text  # Adding job posting time
     }
-    
+
+    # Check if the link is already in the list, to avoid duplicates
     if data.link not in job_data["links"]:
         job_data["jobs"].append(job_entry)
         job_data["links"].append(data.link)
-        save_job_data(job_data)
+        save_job_data(job_data)  # Save the updated data
         print('[ON_DATA]', data.title, data.company, data.link, data.date_text)
+
 
 def on_error(error):
     print('[ON_ERROR]', error)
