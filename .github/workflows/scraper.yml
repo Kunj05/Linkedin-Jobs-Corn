@@ -26,19 +26,19 @@ jobs:
           LI_AT_COOKIE: ${{ secrets.LI_AT_COOKIE }}
         run: python scraper.py
 
-      - name: Prepare GitHub Pages
+      - name: Prepare GitHub Pages (Docs Folder)
         run: |
           mkdir -p docs
-          if [ -f job_listings.json ]; then cp job_listings.json docs/; else echo "job_listings.json missing"; exit 1; fi
-          if [ -f last_reset.json ]; then cp last_reset.json docs/; else echo "last_reset.json missing"; fi
-          if [ -f index.html ]; then cp index.html docs/; else echo "index.html missing"; exit 1; fi
-          if [ -f error.log ]; then cp error.log docs/; else echo "No error.log"; fi
-          touch docs/.nojekyll
+          cp job_listings.json docs/
+          cp last_reset.json docs/  # Optional
+          cp index.html docs/
+          if [ -f error.log ]; then cp error.log docs/; fi
+          touch docs/.nojekyll  # Disable Jekyll processing
 
-      - name: Commit and push results
+      - name: Commit and push results to main
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add docs/job_listings.json docs/last_reset.json docs/index.html docs/error.log docs/.nojekyll
           git commit -m "Update job listings - $(date +'%Y-%m-%d %H:%M')" || echo "No changes to commit"
-          git pushname: LinkedIn Job Scraper
+          git push origin main  # Push changes to the main branch
