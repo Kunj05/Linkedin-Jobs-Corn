@@ -26,7 +26,7 @@ jobs:
           LI_AT_COOKIE: ${{ secrets.LI_AT_COOKIE }}
         run: python scraper.py
 
-      - name: Prepare GitHub Pages (Docs Folder)
+      - name: Prepare GitHub Pages
         run: |
           mkdir -p docs
           cp job_listings.json docs/
