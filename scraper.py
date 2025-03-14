@@ -42,8 +42,12 @@ TIMESTAMP_FILE = 'last_reset.json'
 def load_job_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'r') as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                print('[ERROR] Invalid JSON, resetting')
     return {"jobs": [], "links": []}
+
 
 # Load last reset timestamp
 def load_last_reset():
@@ -80,7 +84,13 @@ def on_error(error):
             f.write(f"[{datetime.now()}] Possible cookie expiration: {error}\n")
 
 def on_end():
-    print('[ON_END]')
+    job_data = load_job_data()
+    if not job_data["jobs"]:
+        print('[WARNING] No jobs scraped')
+    save_job_data(job_data)
+    print('[ON_END] Saved', len(job_data["jobs"]), 'jobs')
+
+
 
 # Reset data every 3 days
 def check_and_reset():
