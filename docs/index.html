@@ -28,25 +28,28 @@
         <tbody id="jobListings"></tbody>
     </table>
 
-    <script>
-        fetch('job_listings.json')
-            .then(response => response.json())
-            .then(data => {
-                const tbody = document.getElementById('jobListings');
-                data.jobs.forEach(job => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${job.title}</td>
-                        <td>${job.company}</td>
-                        <td><a href="${job.link}" target="_blank">Apply</a></td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('jobListings').innerHTML = '<tr><td colspan="3">Error loading data</td></tr>';
+<script>
+    fetch('./job_listings.json')  // Explicit relative path
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            const tbody = document.getElementById('jobListings');
+            data.jobs.forEach(job => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${job.title}</td>
+                    <td>${job.company}</td>
+                    <td><a href="${job.link}" target="_blank">Apply</a></td>
+                `;
+                tbody.appendChild(row);
             });
-    </script>
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('jobListings').innerHTML = '<tr><td colspan="3">Error loading data: ' + error.message + '</td></tr>';
+        });
+</script>
 </body>
 </html>
