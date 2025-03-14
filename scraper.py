@@ -2,6 +2,7 @@ import logging
 import json
 import os
 from datetime import datetime, timedelta
+import streamlit as st
 from linkedin_jobs_scraper import LinkedinScraper
 from linkedin_jobs_scraper.events import Events, EventData
 from linkedin_jobs_scraper.query import Query, QueryOptions, QueryFilters
@@ -35,13 +36,8 @@ JOB_TITLES = [
 ]
 
 # File paths
-DOCS_DIR = 'docs'
-DATA_FILE = os.path.join(DOCS_DIR, 'job_listings.json')
-TIMESTAMP_FILE = os.path.join(DOCS_DIR, 'last_reset.json')
-
-# Ensure docs directory exists
-if not os.path.exists(DOCS_DIR):
-    os.makedirs(DOCS_DIR)
+DATA_FILE = 'job_listings.json'
+TIMESTAMP_FILE = 'last_reset.json'
 
 # Load job data
 def load_job_data():
@@ -70,11 +66,6 @@ def save_last_reset(timestamp):
     with open(TIMESTAMP_FILE, 'w') as f:
         json.dump(timestamp.isoformat(), f)
 
-# Create .nojekyll file
-def create_nojekyll():
-    with open(os.path.join(DOCS_DIR, '.nojekyll'), 'w'):
-        pass  # Create empty file
-
 # Event handlers
 def on_data(data: EventData):
     job_data = load_job_data()
@@ -82,9 +73,8 @@ def on_data(data: EventData):
         "title": data.title,
         "company": data.company,
         "link": data.link,
-        "time": data.date_text  # Adding job posting time
+        "time": data.date_text
     }
-    
     if data.link not in job_data["links"]:
         job_data["jobs"].append(job_entry)
         job_data["links"].append(data.link)
@@ -93,13 +83,12 @@ def on_data(data: EventData):
 
 def on_error(error):
     print('[ON_ERROR]', error)
-    with open(os.path.join(DOCS_DIR, 'error.log'), 'a') as f:
+    with open('error.log', 'a') as f:
         f.write(f"[{datetime.now()}] Error: {error}\n")
 
 def on_end():
     job_data = load_job_data()
     print('[ON_END] Jobs saved:', len(job_data["jobs"]))
-    create_nojekyll()  # Ensure .nojekyll is created
 
 # Reset data every 3 days
 def check_and_reset():
@@ -110,41 +99,55 @@ def check_and_reset():
         save_job_data({"jobs": [], "links": []})
         save_last_reset(now)
 
-# Initialize scraper
-scraper = LinkedinScraper(
-    chrome_executable_path=None,
-    headless=True,
-    max_workers=1,
-    slow_mo=1.0,
-    page_load_timeout=40
-)
-
-# Add event listeners
-scraper.on(Events.DATA, on_data)
-scraper.on(Events.ERROR, on_error)
-scraper.on(Events.END, on_end)
-
-# Define common query options with increased limit
-common_options = QueryOptions(
-    locations=['India'],
-    apply_link=True,
-    skip_promoted_jobs=True,
-    limit=20,  # Increased to 20
-    filters=QueryFilters(
-        relevance=RelevanceFilters.RECENT,
-        time=TimeFilters.MONTH,
-        type=[TypeFilters.PART_TIME, TypeFilters.CONTRACT, TypeFilters.TEMPORARY, TypeFilters.FULL_TIME],
-        on_site_or_remote=[OnSiteOrRemoteFilters.REMOTE, OnSiteOrRemoteFilters.HYBRID, OnSiteOrRemoteFilters.ON_SITE],
-        experience=[ExperienceLevelFilters.INTERNSHIP, ExperienceLevelFilters.ENTRY_LEVEL],
+# Scrape jobs
+def scrape_jobs():
+    scraper = LinkedinScraper(
+        chrome_executable_path=None,
+        headless=True,
+        max_workers=1,
+        slow_mo=1.0,
+        page_load_timeout=40
     )
-)
+    scraper.on(Events.DATA, on_data)
+    scraper.on(Events.ERROR, on_error)
+    scraper.on(Events.END, on_end)
 
-# Create queries
-queries = [Query(query=job_title, options=common_options) for job_title in JOB_TITLES]
+    common_options = QueryOptions(
+        locations=['India'],
+        apply_link=True,
+        skip_promoted_jobs=True,
+        limit=20,
+        filters=QueryFilters(
+            relevance=RelevanceFilters.RECENT,
+            time=TimeFilters.MONTH,
+            type=[TypeFilters.PART_TIME, TypeFilters.CONTRACT, TypeFilters.TEMPORARY, TypeFilters.FULL_TIME],
+            on_site_or_remote=[OnSiteOrRemoteFilters.REMOTE, OnSiteOrRemoteFilters.HYBRID, OnSiteOrRemoteFilters.ON_SITE],
+            experience=[ExperienceLevelFilters.INTERNSHIP, ExperienceLevelFilters.ENTRY_LEVEL],
+        )
+    )
 
-# Set LinkedIn cookie from environment variable
-os.environ['LI_AT_COOKIE'] = os.getenv('LI_AT_COOKIE')
+    queries = [Query(query=job_title, options=common_options) for job_title in JOB_TITLES]
+    check_and_reset()
+    scraper.run(queries)
 
-# Run with reset check
-check_and_reset()
-scraper.run(queries)
+# Streamlit app
+def main():
+    st.title("LinkedIn Job Listings")
+    st.write(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # Button to trigger scraping
+    if st.button("Refresh Job Listings"):
+        with st.spinner("Scraping jobs..."):
+            scrape_jobs()
+
+    # Display jobs
+    job_data = load_job_data()
+    if job_data["jobs"]:
+        st.write(f"Found {len(job_data['jobs'])} jobs:")
+        for job in job_data["jobs"]:
+            st.markdown(f"**{job['title']}** at {job['company']} - [Apply]({job['link']}) (Posted: {job['time']})")
+    else:
+        st.write("No jobs found. Click 'Refresh Job Listings' to scrape.")
+
+if __name__ == "__main__":
+    main()

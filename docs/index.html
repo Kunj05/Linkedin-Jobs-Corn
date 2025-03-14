@@ -23,7 +23,7 @@
                 <th>Job Title</th>
                 <th>Company</th>
                 <th>Link</th>
-                <th>Posted</th> <!-- Added column for time -->
+                <th>Posted</th>
             </tr>
         </thead>
         <tbody id="jobListings"></tbody>
@@ -43,7 +43,7 @@
                         <td>${job.title}</td>
                         <td>${job.company}</td>
                         <td><a href="${job.link}" target="_blank">Apply</a></td>
-                        <td>${job.time}</td> <!-- Display time -->
+                        <td>${job.time}</td>
                     `;
                     tbody.appendChild(row);
                 });

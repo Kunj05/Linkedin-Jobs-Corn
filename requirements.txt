@@ -1,0 +1,2 @@
+streamlit
+linkedin-jobs-scraper

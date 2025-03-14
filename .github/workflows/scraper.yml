@@ -3,7 +3,7 @@ name: LinkedIn Job Scraper
 on:
   schedule:
     - cron: '0 */6 * * *'  # Runs every 6 hours
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   scrape:
@@ -24,21 +24,14 @@ jobs:
       - name: Run scraper
         env:
           LI_AT_COOKIE: ${{ secrets.LI_AT_COOKIE }}
-        run: python scraper.py
-
-      - name: Prepare GitHub Pages
         run: |
-          mkdir -p docs
-          cp job_listings.json docs/
-          cp last_reset.json docs/  # Optional
-          cp index.html docs/
-          if [ -f error.log ]; then cp error.log docs/; fi
-          touch docs/.nojekyll  # Disable Jekyll processing
+          python scraper.py
+          ls -R  # Debug: List all files
 
-      - name: Commit and push results to main
+      - name: Commit and push results
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add docs/job_listings.json docs/last_reset.json docs/index.html docs/error.log docs/.nojekyll
           git commit -m "Update job listings - $(date +'%Y-%m-%d %H:%M')" || echo "No changes to commit"
-          git push origin main  # Push changes to the main branch
+          git push
