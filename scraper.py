@@ -86,23 +86,25 @@ def save_last_reset(timestamp):
 
 # Event handlers
 def on_data(data: EventData):
-    # Load the existing job data
+    # Load existing job data
     job_data = load_job_data()
 
-    # Create a new job entry
-    job_entry = {
-        "title": data.title,
-        "company": data.company,
-        "link": data.link,
-        "time": data.date_text  # Adding job posting time
-    }
-
-    # Check if the link is already in the list, to avoid duplicates
+    # Check if the link is already present in the list
     if data.link not in job_data["links"]:
+        # If the link is not present, create a new job entry
+        job_entry = {
+            "title": data.title,
+            "company": data.company,
+            "link": data.link,
+            "time": data.date_text  # Adding job posting time
+        }
+
+        # Add the new job and link to the list
         job_data["jobs"].append(job_entry)
         job_data["links"].append(data.link)
-        save_job_data(job_data)  # Save the updated data
-        print('[ON_DATA]', data.title, data.company, data.link, data.date_text)
+
+        # Save the updated data
+        save_job_data(job_data)
 
 
 def on_error(error):
