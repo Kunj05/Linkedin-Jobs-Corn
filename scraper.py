@@ -10,7 +10,7 @@ from linkedin_jobs_scraper.filters import RelevanceFilters, TimeFilters, TypeFil
 # Set logging level
 logging.basicConfig(level=logging.INFO)
 
-# List of job titles to scrape
+# List of job titles
 JOB_TITLES = [
     "Software Engineer",
     "Intern Full Stack Developer",
@@ -38,19 +38,19 @@ JOB_TITLES = [
 DATA_FILE = 'job_listings.json'
 TIMESTAMP_FILE = 'last_reset.json'
 
-# Load or initialize job data
+# Load job data
 def load_job_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'r') as f:
             return json.load(f)
-    return {"jobs": [], "links": []}  # {jobs: list of job dicts, links: list of unique links}
+    return {"jobs": [], "links": []}
 
-# Load or initialize last reset timestamp
+# Load last reset timestamp
 def load_last_reset():
     if os.path.exists(TIMESTAMP_FILE):
         with open(TIMESTAMP_FILE, 'r') as f:
             return datetime.fromisoformat(json.load(f))
-    return datetime.now() - timedelta(days=4)  # Force reset if no file exists
+    return datetime.now() - timedelta(days=4)
 
 # Save job data
 def save_job_data(data):
@@ -67,7 +67,6 @@ def on_data(data: EventData):
     job_data = load_job_data()
     job_entry = {"title": data.title, "company": data.company, "link": data.link}
     
-    # Check if link is unique
     if data.link not in job_data["links"]:
         job_data["jobs"].append(job_entry)
         job_data["links"].append(data.link)
@@ -76,11 +75,14 @@ def on_data(data: EventData):
 
 def on_error(error):
     print('[ON_ERROR]', error)
+    if "authentication" in str(error).lower() or "429" in str(error):  # Possible cookie issue
+        with open('error.log', 'a') as f:
+            f.write(f"[{datetime.now()}] Possible cookie expiration: {error}\n")
 
 def on_end():
     print('[ON_END]')
 
-# Check and reset data if 3 days have passed
+# Reset data every 3 days
 def check_and_reset():
     last_reset = load_last_reset()
     now = datetime.now()
@@ -94,7 +96,7 @@ scraper = LinkedinScraper(
     chrome_executable_path=None,
     headless=True,
     max_workers=1,
-    slow_mo=0.5,
+    slow_mo=1.0,  # Increased to avoid detection
     page_load_timeout=40
 )
 
@@ -124,6 +126,6 @@ queries = [Query(query=job_title, options=common_options) for job_title in JOB_T
 # Set LinkedIn cookie
 os.environ['LI_AT_COOKIE'] = os.getenv('LI_AT_COOKIE')
 
-# Reset data if needed, then run scraper
+# Run with reset check
 check_and_reset()
 scraper.run(queries)
