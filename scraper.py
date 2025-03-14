@@ -35,22 +35,23 @@ JOB_TITLES = [
 ]
 
 # File paths
-DATA_FILE = 'job_listings.json'
-TIMESTAMP_FILE = 'last_reset.json'
+DOCS_DIR = 'docs'
+DATA_FILE = os.path.join(DOCS_DIR, 'job_listings.json')
+TIMESTAMP_FILE = os.path.join(DOCS_DIR, 'last_reset.json')
+
+# Ensure docs directory exists
+if not os.path.exists(DOCS_DIR):
+    os.makedirs(DOCS_DIR)
 
 # Load job data
 def load_job_data():
-    docs_dir = 'docs'
-    file_path = os.path.join(docs_dir, 'job_listings.json')
-    
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'r') as f:
             try:
                 return json.load(f)
             except json.JSONDecodeError:
                 print('[ERROR] Invalid JSON, resetting')
-    return {"jobs": [], "links": []}  # Return an empty array if the file does not exist or is invalid
-
+    return {"jobs": [], "links": []}
 
 # Load last reset timestamp
 def load_last_reset():
@@ -61,74 +62,44 @@ def load_last_reset():
 
 # Save job data
 def save_job_data(data):
-    docs_dir = 'docs'
-    file_path = os.path.join(docs_dir, 'job_listings.json')
-
-    # Load the existing data
-    existing_data = load_job_data()
-
-    # Append new jobs
-    existing_data["jobs"].extend(data["jobs"])
-    existing_data["links"].extend(data["links"])
-
-    # Save the updated data back to the file
-    with open(file_path, 'w') as f:
-        json.dump(existing_data, f, indent=2)
+    with open(DATA_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
 
 # Save reset timestamp
 def save_last_reset(timestamp):
-    docs_dir = 'docs'
-    if not os.path.exists(docs_dir):
-        os.makedirs(docs_dir)  # Create docs folder if it doesn't exist
-
-    with open(os.path.join(docs_dir, 'last_reset.json'), 'w') as f:
+    with open(TIMESTAMP_FILE, 'w') as f:
         json.dump(timestamp.isoformat(), f)
+
+# Create .nojekyll file
+def create_nojekyll():
+    with open(os.path.join(DOCS_DIR, '.nojekyll'), 'w'):
+        pass  # Create empty file
 
 # Event handlers
 def on_data(data: EventData):
-    # Load existing job data
     job_data = load_job_data()
-
-    # Check if the link is already present in the list
+    job_entry = {
+        "title": data.title,
+        "company": data.company,
+        "link": data.link,
+        "time": data.date_text  # Adding job posting time
+    }
+    
     if data.link not in job_data["links"]:
-        # If the link is not present, create a new job entry
-        job_entry = {
-            "title": data.title,
-            "company": data.company,
-            "link": data.link,
-            "time": data.date_text  # Adding job posting time
-        }
-
-        # Add the new job and link to the list
         job_data["jobs"].append(job_entry)
         job_data["links"].append(data.link)
-
-        # Save the updated data
         save_job_data(job_data)
-
+        print('[ON_DATA]', data.title, data.company, data.link, data.date_text)
 
 def on_error(error):
     print('[ON_ERROR]', error)
-    docs_dir = 'docs'
-    if not os.path.exists(docs_dir):
-        os.makedirs(docs_dir)
-
-    with open(os.path.join(docs_dir, 'error.log'), 'a') as f:
+    with open(os.path.join(DOCS_DIR, 'error.log'), 'a') as f:
         f.write(f"[{datetime.now()}] Error: {error}\n")
-
-def create_nojekyll():
-    docs_dir = 'docs'
-    if not os.path.exists(docs_dir):
-        os.makedirs(docs_dir)
-
-    # Create the .nojekyll file inside the docs folder
-    with open(os.path.join(docs_dir, '.nojekyll'), 'w'):
-        pass  # Just create an empty file
 
 def on_end():
     job_data = load_job_data()
     print('[ON_END] Jobs saved:', len(job_data["jobs"]))
-    save_job_data(job_data)
+    create_nojekyll()  # Ensure .nojekyll is created
 
 # Reset data every 3 days
 def check_and_reset():
