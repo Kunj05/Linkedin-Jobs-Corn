@@ -57,12 +57,21 @@ def load_last_reset():
 
 # Save job data
 def save_job_data(data):
-    with open(DATA_FILE, 'w') as f:
+    docs_dir = 'docs'  # Ensure the 'docs' directory is specified
+    if not os.path.exists(docs_dir):
+        os.makedirs(docs_dir)  # Create docs folder if it doesn't exist
+
+    with open(os.path.join(docs_dir, 'job_listings.json'), 'w') as f:
         json.dump(data, f, indent=2)
+
 
 # Save reset timestamp
 def save_last_reset(timestamp):
-    with open(TIMESTAMP_FILE, 'w') as f:
+    docs_dir = 'docs'
+    if not os.path.exists(docs_dir):
+        os.makedirs(docs_dir)  # Create docs folder if it doesn't exist
+
+    with open(os.path.join(docs_dir, 'last_reset.json'), 'w') as f:
         json.dump(timestamp.isoformat(), f)
 
 # Event handlers
@@ -83,8 +92,21 @@ def on_data(data: EventData):
 
 def on_error(error):
     print('[ON_ERROR]', error)
-    with open('error.log', 'a') as f:
+    docs_dir = 'docs'
+    if not os.path.exists(docs_dir):
+        os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, 'error.log'), 'a') as f:
         f.write(f"[{datetime.now()}] Error: {error}\n")
+
+def create_nojekyll():
+    docs_dir = 'docs'
+    if not os.path.exists(docs_dir):
+        os.makedirs(docs_dir)
+
+    # Create the .nojekyll file inside the docs folder
+    with open(os.path.join(docs_dir, '.nojekyll'), 'w'):
+        pass  # Just create an empty file
 
 def on_end():
     job_data = load_job_data()
