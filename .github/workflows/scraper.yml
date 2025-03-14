@@ -2,7 +2,7 @@ name: LinkedIn Job Scraper
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */6 * * *'  # Runs every 6 hours
   workflow_dispatch:
 
 jobs:
@@ -24,16 +24,18 @@ jobs:
       - name: Run scraper
         env:
           LI_AT_COOKIE: ${{ secrets.LI_AT_COOKIE }}
-        run: python scraper.py
+        run: |
+          python scraper.py
+          ls -R  # List all files to debug directory structure
 
       - name: Prepare GitHub Pages
         run: |
-          mkdir -p docs
-          if [ -f docs/job_listings.json ]; then cp docs/job_listings.json docs/; else echo "job_listings.json missing"; exit 1; fi
-          if [ -f docs/last_reset.json ]; then cp docs/last_reset.json docs/; else echo "last_reset.json missing"; fi
-          if [ -f index.html ]; then cp index.html docs/; else echo "index.html missing"; exit 1; fi
-          if [ -f docs/error.log ]; then cp docs/error.log docs/; else echo "No error.log"; fi
-          touch docs/.nojekyll
+          echo "Directory contents before copy:"
+          ls -la docs/ || echo "docs/ not found"
+          if [ -f docs/job_listings.json ]; then echo "job_listings.json found"; else echo "job_listings.json missing"; exit 1; fi
+          if [ -f docs/last_reset.json ]; then echo "last_reset.json found"; else echo "last_reset.json missing"; fi
+          if [ -f index.html ]; then cp index.html docs/; echo "Copied index.html"; else echo "index.html missing"; exit 1; fi
+          if [ -f docs/error.log ]; then echo "error.log found"; else echo "No error.log"; fi
 
       - name: Commit and push results
         run: |
