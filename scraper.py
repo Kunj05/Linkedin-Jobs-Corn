@@ -48,7 +48,6 @@ def load_job_data():
                 print('[ERROR] Invalid JSON, resetting')
     return {"jobs": [], "links": []}
 
-
 # Load last reset timestamp
 def load_last_reset():
     if os.path.exists(TIMESTAMP_FILE):
@@ -69,28 +68,28 @@ def save_last_reset(timestamp):
 # Event handlers
 def on_data(data: EventData):
     job_data = load_job_data()
-    job_entry = {"title": data.title, "company": data.company, "link": data.link}
+    job_entry = {
+        "title": data.title,
+        "company": data.company,
+        "link": data.link,
+        "time": data.date_text  # Adding job posting time
+    }
     
     if data.link not in job_data["links"]:
         job_data["jobs"].append(job_entry)
         job_data["links"].append(data.link)
         save_job_data(job_data)
-        print('[ON_DATA]', data.title, data.company, data.link)
+        print('[ON_DATA]', data.title, data.company, data.link, data.date_text)
 
 def on_error(error):
     print('[ON_ERROR]', error)
-    if "authentication" in str(error).lower() or "429" in str(error):  # Possible cookie issue
-        with open('error.log', 'a') as f:
-            f.write(f"[{datetime.now()}] Possible cookie expiration: {error}\n")
+    with open('error.log', 'a') as f:
+        f.write(f"[{datetime.now()}] Error: {error}\n")
 
 def on_end():
     job_data = load_job_data()
-    if not job_data["jobs"]:
-        print('[WARNING] No jobs scraped')
+    print('[ON_END] Jobs saved:', len(job_data["jobs"]))
     save_job_data(job_data)
-    print('[ON_END] Saved', len(job_data["jobs"]), 'jobs')
-
-
 
 # Reset data every 3 days
 def check_and_reset():
@@ -106,7 +105,7 @@ scraper = LinkedinScraper(
     chrome_executable_path=None,
     headless=True,
     max_workers=1,
-    slow_mo=1.0,  # Increased to avoid detection
+    slow_mo=1.0,
     page_load_timeout=40
 )
 
@@ -115,12 +114,12 @@ scraper.on(Events.DATA, on_data)
 scraper.on(Events.ERROR, on_error)
 scraper.on(Events.END, on_end)
 
-# Define common query options
+# Define common query options with increased limit
 common_options = QueryOptions(
     locations=['India'],
     apply_link=True,
     skip_promoted_jobs=True,
-    limit=5,
+    limit=20,  # Increased to 20
     filters=QueryFilters(
         relevance=RelevanceFilters.RECENT,
         time=TimeFilters.MONTH,
@@ -133,7 +132,7 @@ common_options = QueryOptions(
 # Create queries
 queries = [Query(query=job_title, options=common_options) for job_title in JOB_TITLES]
 
-# Set LinkedIn cookie
+# Set LinkedIn cookie from environment variable
 os.environ['LI_AT_COOKIE'] = os.getenv('LI_AT_COOKIE')
 
 # Run with reset check
