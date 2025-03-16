@@ -1,6 +1,4 @@
 import logging
-import csv
-import os
 from datetime import datetime
 from linkedin_jobs_scraper import LinkedinScraper
 from linkedin_jobs_scraper.events import Events, EventData
@@ -36,11 +34,20 @@ JOB_TITLES = [
 
 # Event handler to process job data
 def on_data(data: EventData):
-    # Write the job data to the CSV file
-    with open('job_listings.csv', mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([data.title, data.company, data.link, data.date_text])
-        print(f"[ON_DATA] Saved: {data.title} at {data.company} - {data.link} (Posted: {data.date_text})")
+    # Extract job information, filling missing fields with empty strings if necessary
+    title = data.title if data.title else ""
+    company = data.company if data.company else ""
+    link = data.link if data.link else ""
+    date_text = data.date_text if data.date_text else ""
+
+    # Format the job information and append to the text file
+    job_info = f"{title:<40} {company:<30} {link:<80} {date_text}\n"
+    
+    # Open file in append mode to save job data
+    with open("job_listings.txt", "a") as f:
+        f.write(job_info)
+    
+    print(f"[ON_DATA] Saved: {title} at {company} - {link} (Posted: {date_text})")
 
 # Handle errors during scraping
 def on_error(error):
@@ -85,15 +92,14 @@ def scrape_jobs():
 
 # Main function to start scraping
 def main():
-    # Write CSV header if the file is empty
-    if not os.path.exists('job_listings.csv'):
-        with open('job_listings.csv', mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Title', 'Company', 'Link', 'Posted Time'])
-
     # Print the start of the process
     print("LinkedIn Job Listings")
     print(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # Create or clear the job listings text file and write headers
+    with open("job_listings.txt", "w") as f:
+        f.write(f"{'Job Title':<40} {'Company Name':<30} {'Job Link':<80} {'Posted Time'}\n")
+        f.write("="*150 + "\n")
 
     print("Scraping jobs...")
     scrape_jobs()
